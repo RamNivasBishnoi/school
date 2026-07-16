@@ -1,0 +1,6 @@
+{
+  "name": "School Management System",
+  "description": "एक व्यापक स्कूल मैनेजमेंट ERP जिसमें गूगल शीट्स और ड्राइव सिंक, ऑफलाइन मोड, अटेंडेंस, फीस, टाइम टेबल, होमवर्क, अकाउंटिंग, बस यात्रा और परीक्षा परिणाम के लिए अलग-अलग डैशबोर्ड (Admin, Teacher, Student, Manager, Exam In-charge) शामिल हैं।",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
