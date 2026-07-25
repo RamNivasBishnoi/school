@@ -11,12 +11,14 @@ import {
   LeaveRequest,
   AppNotification,
   UserPreferences,
-  SyncLog
+  SyncLog,
+  UserAccount
 } from './types';
 
 import { generateDemoData } from './demoData';
 import { saveSecureState, loadSecureState } from './utils/crypto';
 import { syncStateToSheets, uploadFileToDrive } from './utils/sync';
+import { subscribeToFirestoreState, saveStateToFirestore } from './utils/firestoreSync';
 
 // Subcomponents
 import Analytics from './components/Analytics';
@@ -25,6 +27,7 @@ import TeacherPanel from './components/TeacherPanel';
 import StudentPanel from './components/StudentPanel';
 import ManagerPanel from './components/ManagerPanel';
 import ExamPanel from './components/ExamPanel';
+import LoginModal from './components/LoginModal';
 
 // Icons
 import {
@@ -45,7 +48,10 @@ import {
   CheckCircle,
   HelpCircle,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  LogIn,
+  Globe,
+  Radio
 } from 'lucide-react';
 
 // Initialize Firebase client
@@ -60,25 +66,37 @@ export default function App() {
   // 1. Core ERP App State
   const [state, setState] = useState<AppState | null>(null);
 
-  // 2. Authentication & Google Sync State
+  // 2. Logged-in User Session State
+  const [loggedInUser, setLoggedInUser] = useState<UserAccount | null>(() => {
+    try {
+      const saved = localStorage.getItem('LOGGED_IN_USER');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
+
+  // 3. Authentication & Google Sync State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isFirestoreConnected, setIsFirestoreConnected] = useState(true);
 
-  // 3. Navigation & Views State
+  // 4. Navigation & Views State
   const [currentModule, setCurrentModule] = useState<'dashboard' | 'core-erp'>('dashboard');
 
-  // 4. Notifications State
+  // 5. Notifications State
   const [notifications, setNotifications] = useState<AppNotification[]>([
-    { id: 'N1', title: 'ERP सिस्टम चालू ✔', body: '100 छात्रों और 15 अध्यापकों का डेटा सफलतापूर्वक लोड किया गया।', type: 'success', time: 'अभी-अभी', read: false },
+    { id: 'N1', title: 'ERP क्लाउड लाइव सक्रिय 🟢', body: 'फायरबेस और लोकल एन्क्रिप्शन द्वारा रियल-टाइम डेटा सिंक चालू है।', type: 'success', time: 'अभी-अभी', read: false },
     { id: 'N2', title: 'गूगल क्लाउड सिंक समर्थित', body: 'अपने Google खाते से लॉग इन कर रियल-टाइम शीट सिंक सक्रिय करें।', type: 'info', time: '5 मिनट पहले', read: false },
   ]);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
 
-  // 5. Personalization preferences
+  // 6. Personalization preferences
   const [preferences, setPreferences] = useState<UserPreferences>({
     theme: 'light',
     primaryColor: 'indigo',
@@ -89,7 +107,7 @@ export default function App() {
   // Dropdowns
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
 
-  // 6. Offline tracking listeners
+  // 7. Offline tracking listeners
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
@@ -108,17 +126,30 @@ export default function App() {
     };
   }, []);
 
-  // 7. Load Initial ERP State securely (with Decryption)
+  // 8. Load Initial ERP State & Subscribe to Firestore Live Sync
   useEffect(() => {
     const cachedState = loadSecureState<AppState>('SCHOOL_ERP_APP_STATE');
     if (cachedState) {
       setState(cachedState);
     } else {
-      // Setup pristine generated demo data of exactly 100 students and 15 teachers
       const freshDemo = generateDemoData();
       setState(freshDemo);
       saveSecureState('SCHOOL_ERP_APP_STATE', freshDemo);
     }
+
+    // Subscribe to Firestore for real-time changes across devices
+    const unsubscribeFirestore = subscribeToFirestoreState(
+      (remoteState) => {
+        if (remoteState) {
+          setState(remoteState);
+          saveSecureState('SCHOOL_ERP_APP_STATE', remoteState);
+          setIsFirestoreConnected(true);
+        }
+      },
+      () => {
+        setIsFirestoreConnected(false);
+      }
+    );
 
     // Load preferences
     const cachedPrefs = localStorage.getItem('SCHOOL_ERP_PREFERENCES');
@@ -131,7 +162,7 @@ export default function App() {
     }
 
     // Auth listener
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user);
       } else {
@@ -140,15 +171,56 @@ export default function App() {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeFirestore();
+      unsubscribeAuth();
+    };
   }, []);
 
-  // Save State securely when altered
+  // Show login modal if no user logged in initially
+  useEffect(() => {
+    if (!loggedInUser) {
+      setShowLoginModal(true);
+    }
+  }, [loggedInUser]);
+
+  // Handle Login
+  const handleUserLogin = (user: UserAccount) => {
+    setLoggedInUser(user);
+    localStorage.setItem('LOGGED_IN_USER', JSON.stringify(user));
+    setShowLoginModal(false);
+
+    // Synchronize AppState user profile role
+    if (state) {
+      updateState({
+        userProfile: {
+          role: user.role,
+          selectedId: user.associatedId
+        }
+      });
+    }
+
+    addNotification(
+      'लॉगिन सफल 🔓',
+      `स्वागत है ${user.name}! आप ${user.role} के रूप में लॉग इन हो चुके हैं।`,
+      'success'
+    );
+  };
+
+  const handleUserLogout = () => {
+    setLoggedInUser(null);
+    localStorage.removeItem('LOGGED_IN_USER');
+    setShowLoginModal(true);
+    addNotification('लॉग आउट सम्पन्न', 'आप सफलतापूर्वक लॉग आउट हो चुके हैं।', 'info');
+  };
+
+  // Save State securely locally AND sync to Firestore
   const updateState = (updates: Partial<AppState>) => {
     if (!state) return;
     const newState = { ...state, ...updates };
     setState(newState);
     saveSecureState('SCHOOL_ERP_APP_STATE', newState);
+    saveStateToFirestore(newState);
   };
 
   // Helper to trigger new Toast notifications
@@ -444,51 +516,93 @@ export default function App() {
         {/* 🧭 Top Navigation Header */}
         <header className="h-16 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 px-6 flex items-center justify-between shrink-0 transition-colors duration-200">
           
-          {/* Active Mode Banner */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-zinc-400">सक्रिय भूमिका (Role):</span>
+          {/* Active Mode Banner & Logged-in User Badge */}
+          <div className="flex items-center gap-3">
+            {loggedInUser ? (
+              <div className="flex items-center gap-2">
+                <div className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 rounded-xl flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="text-xs font-black text-indigo-700 dark:text-indigo-300">
+                    👤 {loggedInUser.name} ({loggedInUser.role})
+                  </span>
+                </div>
+                <button
+                  onClick={handleUserLogout}
+                  className="px-2.5 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold text-xs rounded-xl flex items-center gap-1 cursor-pointer transition-colors"
+                  title="लॉग आउट / स्विच यूजर"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">स्विच यूजर</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowLoginModal(true)}
+                className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm transition-colors"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>लॉग इन करें</span>
+              </button>
+            )}
+
             <div className="relative">
               <button
                 onClick={() => setShowRoleSwitcher(!showRoleSwitcher)}
-                className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-black rounded-xl text-xs flex items-center gap-1.5 cursor-pointer"
+                className="px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold rounded-xl text-xs flex items-center gap-1 cursor-pointer border border-zinc-200 dark:border-zinc-700"
               >
-                {activeRole === 'Admin' && '👑 Admin (प्रधान)'}
-                {activeRole === 'Teacher' && `👩‍🏫 Teacher (${selectedTeacher.name.split(' ')[0]})`}
-                {activeRole === 'Student' && `🎓 Student (${selectedStudent.name})`}
-                {activeRole === 'Manager' && '💼 Manager (मैनेजर)'}
-                {activeRole === 'Exam In-charge' && '📝 Exam In-charge'}
+                <span className="text-[11px]">रोल देखें</span>
                 <ChevronDown className="w-3 h-3" />
               </button>
 
               {showRoleSwitcher && (
                 <div className="absolute left-0 mt-2 w-56 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl shadow-xl py-2 z-50 text-xs text-zinc-700 dark:text-zinc-300">
-                  <span className="block px-4 py-1 text-[10px] text-zinc-400 font-bold uppercase">भूमिका स्विच करें</span>
+                  <span className="block px-4 py-1 text-[10px] text-zinc-400 font-bold uppercase">त्वरित डेमो स्विच</span>
                   <button
-                    onClick={() => { updateState({ userProfile: { role: 'Admin' } }); setShowRoleSwitcher(false); }}
+                    onClick={() => {
+                      const u: UserAccount = { id: 'U1', name: 'राजेश शर्मा (प्रधानाचार्य)', email: 'admin@school.com', role: 'Admin', isActive: true };
+                      handleUserLogin(u);
+                      setShowRoleSwitcher(false);
+                    }}
                     className="w-full text-left px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-850 font-bold"
                   >
-                    👑 Admin (प्रधान / प्रधानाचार्य)
+                    👑 Admin (प्रधानाचार्य)
                   </button>
                   <button
-                    onClick={() => { updateState({ userProfile: { role: 'Teacher', selectedId: 'T100' } }); setShowRoleSwitcher(false); }}
+                    onClick={() => {
+                      const u: UserAccount = { id: 'U2', name: 'सुरेश कुमार', email: 'suresh@school.com', role: 'Teacher', associatedId: 'T100', isActive: true };
+                      handleUserLogin(u);
+                      setShowRoleSwitcher(false);
+                    }}
                     className="w-full text-left px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-850 font-bold"
                   >
-                    👩‍🏫 Teacher (सुरेश कुमार - कक्षा 10A)
+                    👩‍🏫 Teacher (सुरेश कुमार - 10A)
                   </button>
                   <button
-                    onClick={() => { updateState({ userProfile: { role: 'Student', selectedId: 'S1001' } }); setShowRoleSwitcher(false); }}
+                    onClick={() => {
+                      const u: UserAccount = { id: 'U3', name: 'आरव शर्मा', email: 'aarav@school.com', role: 'Student', associatedId: 'S1001', isActive: true };
+                      handleUserLogin(u);
+                      setShowRoleSwitcher(false);
+                    }}
                     className="w-full text-left px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-850 font-bold"
                   >
-                    🎓 Student (आरव शर्मा - कक्षा 10A)
+                    🎓 Student (आरव शर्मा - 10A)
                   </button>
                   <button
-                    onClick={() => { updateState({ userProfile: { role: 'Manager' } }); setShowRoleSwitcher(false); }}
+                    onClick={() => {
+                      const u: UserAccount = { id: 'U4', name: 'महेन्द्र सिंह', email: 'manager@school.com', role: 'Manager', isActive: true };
+                      handleUserLogin(u);
+                      setShowRoleSwitcher(false);
+                    }}
                     className="w-full text-left px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-850 font-bold"
                   >
-                    💼 Manager (महेन्द्र सिंह - कोषाध्यक्ष)
+                    💼 Manager (कोषाध्यक्ष)
                   </button>
                   <button
-                    onClick={() => { updateState({ userProfile: { role: 'Exam In-charge' } }); setShowRoleSwitcher(false); }}
+                    onClick={() => {
+                      const u: UserAccount = { id: 'U5', name: 'विकास यादव', email: 'exam@school.com', role: 'Exam In-charge', isActive: true };
+                      handleUserLogin(u);
+                      setShowRoleSwitcher(false);
+                    }}
                     className="w-full text-left px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-850 font-bold"
                   >
                     📝 Exam In-charge (परीक्षा प्रभारी)
@@ -705,6 +819,17 @@ export default function App() {
 
         </main>
       </div>
+
+      {/* 🔐 Login Modal */}
+      {(showLoginModal || !loggedInUser) && state && (
+        <LoginModal
+          teachers={state.teachers}
+          students={state.students}
+          onLogin={handleUserLogin}
+          onGoogleLogin={handleGoogleLogin}
+          isLoggingInGoogle={isLoggingIn}
+        />
+      )}
     </div>
   );
 }
