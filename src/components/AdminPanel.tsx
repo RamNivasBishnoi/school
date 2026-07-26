@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Student, Teacher, BusRoute, TimetableSlot, AppState, UserAccount } from '../types';
-import { Plus, Trash, Shield, Users, MapPin, CalendarDays, KeyRound, Check, RefreshCw } from 'lucide-react';
+import { Plus, Trash, Shield, Users, MapPin, CalendarDays, KeyRound, Check, RefreshCw, Sparkles, UserCheck, GraduationCap, Briefcase, FileCheck2, LogIn } from 'lucide-react';
 
 interface AdminPanelProps {
   students: Student[];
@@ -9,6 +9,7 @@ interface AdminPanelProps {
   timetable: TimetableSlot[];
   onUpdateState: (updates: Partial<AppState>) => void;
   onAddNotification: (title: string, body: string, type: 'info' | 'success' | 'warning' | 'alert') => void;
+  onSwitchUser?: (user: UserAccount) => void;
 }
 
 export default function AdminPanel({
@@ -17,9 +18,10 @@ export default function AdminPanel({
   busRoutes,
   timetable,
   onUpdateState,
-  onAddNotification
+  onAddNotification,
+  onSwitchUser
 }: AdminPanelProps) {
-  const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'routes' | 'timetable' | 'users'>('students');
+  const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'routes' | 'timetable' | 'users' | 'demo'>('students');
 
   // Form States
   const [newStudent, setNewStudent] = useState({ name: '', fatherName: '', className: '6A', rollNo: '', busRouteId: 'None', busStop: 'None' });
@@ -212,6 +214,16 @@ export default function AdminPanel({
           }`}
         >
           <KeyRound className="w-4 h-4" /> यूजर एक्सेस (Access Control)
+        </button>
+        <button
+          onClick={() => setActiveTab('demo')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200 ${
+            activeTab === 'demo'
+              ? 'bg-purple-600 text-white shadow-md'
+              : 'bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 hover:bg-purple-100'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-amber-400" /> ⚡ डेमो एक्सप्लोरर (Demo Mode)
         </button>
       </div>
 
@@ -890,6 +902,119 @@ export default function AdminPanel({
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'demo' && (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white p-6 rounded-2xl shadow-md">
+              <div className="flex items-center gap-3 mb-2">
+                <Sparkles className="w-6 h-6 text-amber-300" />
+                <h3 className="text-lg font-black font-display">⚡ 1-क्लिक डेमो एक्सप्लोरर (Admin Control)</h3>
+              </div>
+              <p className="text-xs text-purple-200">
+                यहाँ से एडमिन के रूप में आप सिस्टम के विभिन्न रोल्स (शिक्षक, छात्र, प्रबंधक, परीक्षा प्रभारी) में 1-क्लिक के साथ स्विच करके ऐप के सभी फीचर्स लाइव एक्सप्लोर कर सकते हैं।
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              {/* Admin */}
+              <div className="p-4 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-indigo-600 text-white rounded-xl">
+                    <Shield className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-zinc-900 dark:text-white">👑 Admin (प्रधानाचार्य)</h4>
+                    <p className="text-[11px] text-zinc-500">सभी मॉड्यूल्स व सेटिंग्स का पूर्ण अधिकार</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => onSwitchUser && onSwitchUser({ id: 'U1', name: 'राजेश शर्मा (प्रधानाचार्य)', email: 'admin@school.com', role: 'Admin', isActive: true })}
+                  className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                >
+                  <LogIn className="w-3.5 h-3.5" /> स्विच करें
+                </button>
+              </div>
+
+              {/* Teacher */}
+              <div className="p-4 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-emerald-600 text-white rounded-xl">
+                    <UserCheck className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-zinc-900 dark:text-white">👩‍🏫 Teacher (सुरेश कुमार)</h4>
+                    <p className="text-[11px] text-zinc-500">कक्षा 10A - गणित, उपस्थिति, गृहकार्य</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => onSwitchUser && onSwitchUser({ id: 'U2', name: 'सुरेश कुमार', email: 'suresh@school.com', role: 'Teacher', associatedId: 'T100', isActive: true })}
+                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                >
+                  <LogIn className="w-3.5 h-3.5" /> स्विच करें
+                </button>
+              </div>
+
+              {/* Student */}
+              <div className="p-4 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-blue-600 text-white rounded-xl">
+                    <GraduationCap className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-zinc-900 dark:text-white">🎓 Student (आरव शर्मा)</h4>
+                    <p className="text-[11px] text-zinc-500">कक्षा 10A (Roll No: 01) - परिणाम, फीस कार्ड</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => onSwitchUser && onSwitchUser({ id: 'U3', name: 'आरव शर्मा', email: 'aarav@school.com', role: 'Student', associatedId: 'S1001', isActive: true })}
+                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                >
+                  <LogIn className="w-3.5 h-3.5" /> स्विच करें
+                </button>
+              </div>
+
+              {/* Manager */}
+              <div className="p-4 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-amber-600 text-white rounded-xl">
+                    <Briefcase className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-zinc-900 dark:text-white">💼 Manager (महेन्द्र सिंह)</h4>
+                    <p className="text-[11px] text-zinc-500">कोषाध्यक्ष - वित्तीय लेखा-जोखा व वेतन</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => onSwitchUser && onSwitchUser({ id: 'U4', name: 'महेन्द्र सिंह', email: 'manager@school.com', role: 'Manager', isActive: true })}
+                  className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                >
+                  <LogIn className="w-3.5 h-3.5" /> स्विच करें
+                </button>
+              </div>
+
+              {/* Exam In-charge */}
+              <div className="p-4 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-2xl flex items-center justify-between md:col-span-2">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-purple-600 text-white rounded-xl">
+                    <FileCheck2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-zinc-900 dark:text-white">📝 Exam Controller (विकास यादव)</h4>
+                    <p className="text-[11px] text-zinc-500">परीक्षा प्रभारी - अंक तालिका व रिजल्ट घोषणा</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => onSwitchUser && onSwitchUser({ id: 'U5', name: 'विकास यादव', email: 'exam@school.com', role: 'Exam In-charge', isActive: true })}
+                  className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                >
+                  <LogIn className="w-3.5 h-3.5" /> स्विच करें
+                </button>
+              </div>
+
             </div>
           </div>
         )}

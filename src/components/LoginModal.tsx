@@ -11,7 +11,9 @@ import {
   User as UserIcon,
   LogIn,
   KeyRound,
-  Sparkles
+  School,
+  Sparkles,
+  AlertCircle
 } from 'lucide-react';
 
 interface LoginModalProps {
@@ -29,33 +31,13 @@ export default function LoginModal({
   onGoogleLogin,
   isLoggingInGoogle
 }: LoginModalProps) {
-  const [activeTab, setActiveTab] = useState<'demo' | 'custom'>('demo');
-
   // Custom login state
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'Admin' | 'Teacher' | 'Student' | 'Manager' | 'Exam In-charge'>('Teacher');
+  const [role, setRole] = useState<'Admin' | 'Teacher' | 'Student' | 'Manager' | 'Exam In-charge'>('Admin');
   const [selectedId, setSelectedId] = useState<string>('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
-
-  // Demo user quick login action
-  const handleQuickDemoLogin = (
-    demoRole: 'Admin' | 'Teacher' | 'Student' | 'Manager' | 'Exam In-charge',
-    demoName: string,
-    demoEmail: string,
-    assocId?: string
-  ) => {
-    const user: UserAccount = {
-      id: `USR-${Date.now()}`,
-      name: demoName,
-      email: demoEmail,
-      role: demoRole,
-      associatedId: assocId,
-      isActive: true
-    };
-    onLogin(user);
-  };
 
   const handleCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,251 +58,162 @@ export default function LoginModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-md animate-fade-in">
-      <div className="w-full max-w-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/90 backdrop-blur-md animate-fade-in overflow-y-auto">
+      <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto">
         
-        {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-600 to-indigo-800 p-6 text-white text-center relative">
-          <div className="w-12 h-12 mx-auto mb-3 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20">
-            <Lock className="w-6 h-6 text-white" />
+        {/* Mobile App Screen Header */}
+        <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 p-8 text-white text-center relative overflow-hidden">
+          <div className="absolute -right-6 -bottom-6 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+          <div className="w-16 h-16 mx-auto mb-3 bg-white/15 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/20 shadow-lg">
+            <School className="w-9 h-9 text-white" />
           </div>
-          <h2 className="text-xl font-black font-display tracking-tight">स्कूल ERP लॉगिन पोर्टल</h2>
-          <p className="text-xs text-indigo-100 mt-1">
-            अपने अधिकृत रोल (Role) या डेमो अकाउंट से लॉग इन करें
+          <h1 className="text-2xl font-black font-display tracking-tight">स्कूल ERP मोबाइल ऐप</h1>
+          <p className="text-xs text-indigo-100 mt-1 font-medium">
+            डिजिटल स्कूल प्रबंधन व लाइव क्लाउड पोर्टल
           </p>
+          <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full text-[11px] font-bold text-emerald-200 border border-white/10">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>फायरबेस रियल-टाइम क्लाउड एक्टिव</span>
+          </div>
         </div>
 
-        {/* Tab Toggle */}
-        <div className="flex border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-850 p-1.5 gap-1">
-          <button
-            onClick={() => setActiveTab('demo')}
-            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === 'demo'
-                ? 'bg-white dark:bg-zinc-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" /> ⚡ 1-क्लिक डेमो लॉगिन (Demo Login)
-          </button>
-          <button
-            onClick={() => setActiveTab('custom')}
-            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === 'custom'
-                ? 'bg-white dark:bg-zinc-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-            }`}
-          >
-            <UserIcon className="w-3.5 h-3.5" /> 👤 कस्टम अकाउंट (Custom Login)
-          </button>
-        </div>
-
-        {/* Modal Content */}
-        <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+        {/* Form Container */}
+        <div className="p-6 space-y-5">
           
-          {activeTab === 'demo' && (
-            <div className="space-y-3">
-              <p className="text-xs text-zinc-500 font-medium">
-                लाइव टेस्टिंग हेतु नीचे दिए गए किसी भी डेमो रोल पर क्लिक करके तुरंत लॉग इन करें:
-              </p>
+          <form onSubmit={handleCustomSubmit} className="space-y-4">
+            {loginError && (
+              <div className="p-3 bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{loginError}</span>
+              </div>
+            )}
 
-              {/* Demo Buttons List */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                
-                {/* Admin */}
-                <button
-                  onClick={() => handleQuickDemoLogin('Admin', 'राजेश शर्मा (प्रधानाचार्य)', 'admin@school.com')}
-                  className="p-3 bg-zinc-50 hover:bg-indigo-50 dark:bg-zinc-800/50 dark:hover:bg-indigo-950/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-left transition-all hover:border-indigo-300 group cursor-pointer flex items-center gap-3"
-                >
-                  <div className="p-2.5 bg-indigo-500 text-white rounded-xl group-hover:scale-105 transition-transform">
-                    <ShieldCheck className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="block text-xs font-black text-zinc-900 dark:text-white">👑 Admin (प्रधानाचार्य)</span>
-                    <span className="text-[10px] text-zinc-400 block">admin@school.com</span>
-                  </div>
-                </button>
-
-                {/* Teacher */}
-                <button
-                  onClick={() => handleQuickDemoLogin('Teacher', teachers[0]?.name || 'सुरेश कुमार', 'suresh@school.com', teachers[0]?.id || 'T100')}
-                  className="p-3 bg-zinc-50 hover:bg-emerald-50 dark:bg-zinc-800/50 dark:hover:bg-emerald-950/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-left transition-all hover:border-emerald-300 group cursor-pointer flex items-center gap-3"
-                >
-                  <div className="p-2.5 bg-emerald-500 text-white rounded-xl group-hover:scale-105 transition-transform">
-                    <UserCheck className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="block text-xs font-black text-zinc-900 dark:text-white">👩‍🏫 Teacher (शिक्षक)</span>
-                    <span className="text-[10px] text-zinc-400 block">{teachers[0]?.name || 'सुरेश कुमार'} (10A)</span>
-                  </div>
-                </button>
-
-                {/* Student */}
-                <button
-                  onClick={() => handleQuickDemoLogin('Student', students[0]?.name || 'आरव शर्मा', 'aarav@school.com', students[0]?.id || 'S1001')}
-                  className="p-3 bg-zinc-50 hover:bg-blue-50 dark:bg-zinc-800/50 dark:hover:bg-blue-950/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-left transition-all hover:border-blue-300 group cursor-pointer flex items-center gap-3"
-                >
-                  <div className="p-2.5 bg-blue-500 text-white rounded-xl group-hover:scale-105 transition-transform">
-                    <GraduationCap className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="block text-xs font-black text-zinc-900 dark:text-white">🎓 Student (छात्र)</span>
-                    <span className="text-[10px] text-zinc-400 block">{students[0]?.name || 'आरव शर्मा'} (10A)</span>
-                  </div>
-                </button>
-
-                {/* Manager */}
-                <button
-                  onClick={() => handleQuickDemoLogin('Manager', 'महेन्द्र सिंह (कोषाध्यक्ष)', 'manager@school.com')}
-                  className="p-3 bg-zinc-50 hover:bg-amber-50 dark:bg-zinc-800/50 dark:hover:bg-amber-950/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-left transition-all hover:border-amber-300 group cursor-pointer flex items-center gap-3"
-                >
-                  <div className="p-2.5 bg-amber-500 text-white rounded-xl group-hover:scale-105 transition-transform">
-                    <Briefcase className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="block text-xs font-black text-zinc-900 dark:text-white">💼 Manager (मैनेजर)</span>
-                    <span className="text-[10px] text-zinc-400 block">manager@school.com</span>
-                  </div>
-                </button>
-
-                {/* Exam In-charge */}
-                <button
-                  onClick={() => handleQuickDemoLogin('Exam In-charge', 'विकास यादव (परीक्षा प्रभारी)', 'exam@school.com')}
-                  className="p-3 bg-zinc-50 hover:bg-purple-50 dark:bg-zinc-800/50 dark:hover:bg-purple-950/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-left transition-all hover:border-purple-300 group cursor-pointer flex items-center gap-3 sm:col-span-2"
-                >
-                  <div className="p-2.5 bg-purple-500 text-white rounded-xl group-hover:scale-105 transition-transform">
-                    <FileCheck2 className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="block text-xs font-black text-zinc-900 dark:text-white">📝 Exam Controller (परीक्षा प्रभारी)</span>
-                    <span className="text-[10px] text-zinc-400 block">exam@school.com</span>
-                  </div>
-                </button>
-
+            {/* Role Selection */}
+            <div>
+              <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
+                अपनी भूमिका (Role) चुनें *
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'Admin', label: '👑 Admin', desc: 'प्रधानाचार्य' },
+                  { id: 'Teacher', label: '👩‍🏫 Teacher', desc: 'शिक्षक' },
+                  { id: 'Student', label: '🎓 Student', desc: 'छात्र' },
+                  { id: 'Manager', label: '💼 Manager', desc: 'कोषाध्यक्ष' },
+                  { id: 'Exam In-charge', label: '📝 Exam', desc: 'परीक्षा प्रभारी' }
+                ].map((r) => (
+                  <button
+                    type="button"
+                    key={r.id}
+                    onClick={() => setRole(r.id as any)}
+                    className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                      role === r.id
+                        ? 'bg-indigo-50 dark:bg-indigo-950/50 border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-sm'
+                        : 'bg-zinc-50 dark:bg-zinc-800/60 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100'
+                    }`}
+                  >
+                    <span className="block text-xs font-black">{r.label}</span>
+                    <span className="text-[10px] opacity-75">{r.desc}</span>
+                  </button>
+                ))}
               </div>
             </div>
-          )}
 
-          {activeTab === 'custom' && (
-            <form onSubmit={handleCustomSubmit} className="space-y-4">
-              {loginError && (
-                <div className="p-3 bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 rounded-xl text-xs font-bold">
-                  {loginError}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
-                  आपका नाम (Full Name) *
-                </label>
-                <div className="relative">
-                  <UserIcon className="w-4 h-4 absolute left-3 top-3 text-zinc-400" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="उदा. अमित शर्मा"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
+            {/* User Details */}
+            <div>
+              <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
+                उपयोगकर्ता नाम (Full Name) *
+              </label>
+              <div className="relative">
+                <UserIcon className="w-4 h-4 absolute left-3 top-3 text-zinc-400" />
+                <input
+                  type="text"
+                  required
+                  placeholder="अपना पूरा नाम दर्ज करें"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
               </div>
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
-                  ईमेल आईडी (Email ID) *
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 absolute left-3 top-3 text-zinc-400" />
-                  <input
-                    type="email"
-                    required
-                    placeholder="amit@school.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
+            <div>
+              <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
+                ईमेल आईडी (Email Address) *
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 absolute left-3 top-3 text-zinc-400" />
+                <input
+                  type="email"
+                  required
+                  placeholder="user@school.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
               </div>
+            </div>
 
+            {role === 'Teacher' && (
               <div>
                 <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
-                  रोल चुनें (Select Role) *
+                  शिक्षक प्रोफाइल लिंक (Teacher Profile)
                 </label>
                 <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as any)}
+                  value={selectedId}
+                  onChange={(e) => setSelectedId(e.target.value)}
                   className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value="Admin">👑 Admin (प्रधानाचार्य)</option>
-                  <option value="Teacher">👩‍🏫 Teacher (शिक्षक)</option>
-                  <option value="Student">🎓 Student (छात्र)</option>
-                  <option value="Manager">💼 Manager (प्रबंधक/कोषाध्यक्ष)</option>
-                  <option value="Exam In-charge">📝 Exam In-charge (परीक्षा प्रभारी)</option>
+                  {teachers.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.subject} - Class {t.classNameAssigned})
+                    </option>
+                  ))}
                 </select>
               </div>
+            )}
 
-              {role === 'Teacher' && (
-                <div>
-                  <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
-                    संबद्ध शिक्षक प्रोफाइल (Assigned Teacher Account)
-                  </label>
-                  <select
-                    value={selectedId}
-                    onChange={(e) => setSelectedId(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    {teachers.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name} ({t.subject} - Class {t.classNameAssigned})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {role === 'Student' && (
-                <div>
-                  <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
-                    संबद्ध छात्र प्रोफाइल (Assigned Student Profile)
-                  </label>
-                  <select
-                    value={selectedId}
-                    onChange={(e) => setSelectedId(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    {students.slice(0, 20).map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} (Roll {s.rollNo} - Class {s.className})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
+            {role === 'Student' && (
               <div>
                 <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
-                  पासवर्ड (Password) - वैकल्पिक
+                  छात्र प्रोफाइल लिंक (Student Profile)
                 </label>
-                <div className="relative">
-                  <KeyRound className="w-4 h-4 absolute left-3 top-3 text-zinc-400" />
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
+                <select
+                  value={selectedId}
+                  onChange={(e) => setSelectedId(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {students.slice(0, 20).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} (Roll {s.rollNo} - Class {s.className})
+                    </option>
+                  ))}
+                </select>
               </div>
+            )}
 
-              <button
-                type="submit"
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all"
-              >
-                <LogIn className="w-4 h-4" /> लॉग इन करें (Login)
-              </button>
-            </form>
-          )}
+            <div>
+              <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
+                पासवर्ड (Password)
+              </label>
+              <div className="relative">
+                <KeyRound className="w-4 h-4 absolute left-3 top-3 text-zinc-400" />
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg transition-all"
+            >
+              <LogIn className="w-4 h-4" /> ऐप में प्रवेश करें (Sign In)
+            </button>
+          </form>
 
           {/* Google Auth option */}
           {onGoogleLogin && (
@@ -337,10 +230,16 @@ export default function LoginModal({
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                 </svg>
-                {isLoggingInGoogle ? 'गूगल से लॉगिन हो रहा...' : 'गूगल खाते से लॉगिन करें (Sign in with Google)'}
+                {isLoggingInGoogle ? 'गूगल से लॉगिन हो रहा...' : 'गूगल खाते से लॉगिन करें (Google Sign In)'}
               </button>
             </div>
           )}
+
+          <div className="text-center pt-2">
+            <p className="text-[11px] text-zinc-400 font-medium">
+              💡 एडमिन अकाउंट से लॉगिन करके आप 1-क्लिक डेमो एक्सप्लोरर का उपयोग कर सकते हैं।
+            </p>
+          </div>
 
         </div>
 
