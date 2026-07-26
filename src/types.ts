@@ -87,6 +87,10 @@ export interface TimetableSlot {
   teacherName: string;
 }
 
+export interface UserPasswordMap {
+  [usernameOrRoll: string]: string;
+}
+
 export interface AppState {
   schoolName: string;
   students: Student[];
@@ -97,6 +101,7 @@ export interface AppState {
   busRoutes: BusRoute[];
   timetable: TimetableSlot[];
   isResultsDeclared: boolean;
+  userPasswords?: UserPasswordMap;
   userProfile: {
     role: 'Admin' | 'Teacher' | 'Student' | 'Manager' | 'Exam In-charge';
     selectedId?: string; // Student ID or Teacher ID if corresponding role is chosen

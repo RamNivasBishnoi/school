@@ -29,6 +29,7 @@ import ManagerPanel from './components/ManagerPanel';
 import ExamPanel from './components/ExamPanel';
 import LoginModal from './components/LoginModal';
 import PdfExportModal from './components/PdfExportModal';
+import NotificationToast, { ToastMessage } from './components/NotificationToast';
 
 // Icons
 import {
@@ -97,6 +98,7 @@ export default function App() {
     { id: 'N1', title: 'ERP क्लाउड लाइव सक्रिय 🟢', body: 'फायरबेस और लोकल एन्क्रिप्शन द्वारा रियल-टाइम डेटा सिंक चालू है।', type: 'success', time: 'अभी-अभी', read: false },
     { id: 'N2', title: 'गूगल क्लाउड सिंक समर्थित', body: 'अपने Google खाते से लॉग इन कर रियल-टाइम शीट सिंक सक्रिय करें।', type: 'info', time: '5 मिनट पहले', read: false },
   ]);
+  const [activeToasts, setActiveToasts] = useState<ToastMessage[]>([]);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
 
   // 6. Personalization preferences
@@ -227,9 +229,10 @@ export default function App() {
   };
 
   // Helper to trigger new Toast notifications
-  const addNotification = (title: string, body: string, type: 'info' | 'success' | 'warning' | 'alert') => {
+  const addNotification = (title: string, body: string, type: 'info' | 'success' | 'warning' | 'alert' = 'info') => {
+    const notifId = `N-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const newNotif: AppNotification = {
-      id: `N-${Date.now()}`,
+      id: notifId,
       title,
       body,
       type,
@@ -237,6 +240,15 @@ export default function App() {
       read: false
     };
     setNotifications(prev => [newNotif, ...prev]);
+
+    // Show instant popup toast banner
+    const toast: ToastMessage = {
+      id: notifId,
+      title,
+      body,
+      type
+    };
+    setActiveToasts(prev => [toast, ...prev].slice(0, 3));
   };
 
   // Apply visual theme class to root html element
@@ -403,11 +415,38 @@ export default function App() {
 
   const activeColor = colorMap[preferences.primaryColor] || colorMap.indigo;
 
+  // Render locked screen when logged out
+  if (!loggedInUser) {
+    return (
+      <div className="h-screen w-screen overflow-hidden bg-gradient-to-br from-indigo-950 via-zinc-950 to-purple-950 flex items-center justify-center p-4">
+        {state && (
+          <LoginModal
+            teachers={state.teachers}
+            students={state.students}
+            userPasswords={state.userPasswords}
+            onUpdatePasswords={(newMap) => updateState({ userPasswords: newMap })}
+            onLogin={handleUserLogin}
+            onGoogleLogin={handleGoogleLogin}
+            isLoggingInGoogle={isLoggingIn}
+          />
+        )}
+        <NotificationToast
+          toasts={activeToasts}
+          onDismiss={(id) => setActiveToasts(prev => prev.filter(t => t.id !== id))}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-200">
+    <div className={`h-screen w-screen max-h-screen overflow-hidden flex flex-col md:flex-row bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-200 ${preferences.theme === 'dark' ? 'dark' : ''}`}>
+      <NotificationToast
+        toasts={activeToasts}
+        onDismiss={(id) => setActiveToasts(prev => prev.filter(t => t.id !== id))}
+      />
       
       {/* 🧭 Left Sidebar */}
-      <aside className="w-full md:w-64 bg-white dark:bg-zinc-900 border-r border-zinc-100 dark:border-zinc-800 p-5 flex flex-col justify-between shrink-0 transition-colors duration-200">
+      <aside className="w-full md:w-64 h-auto md:h-full overflow-y-auto bg-white dark:bg-zinc-900 border-r border-zinc-100 dark:border-zinc-800 p-5 flex flex-col justify-between shrink-0 transition-colors duration-200">
         <div className="space-y-6">
           {/* Logo Brand */}
           <div className="flex items-center gap-3">
@@ -527,7 +566,7 @@ export default function App() {
       </aside>
 
       {/* 🧭 Right Main Container */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         
         {/* 🧭 Top Navigation Header */}
         <header className="h-16 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 px-6 flex items-center justify-between shrink-0 transition-colors duration-200">
@@ -745,7 +784,7 @@ export default function App() {
         )}
 
         {/* 🧭 Main Body viewport area */}
-        <main id="erp-main-content" className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6 space-y-6">
+        <main id="erp-main-content" className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 space-y-6">
           
           {/* 1. View: Dashboard analytics */}
           {currentModule === 'dashboard' && (
@@ -794,6 +833,8 @@ export default function App() {
                   teachers={state.teachers}
                   busRoutes={state.busRoutes}
                   timetable={state.timetable}
+                  userPasswords={state.userPasswords}
+                  onUpdatePasswords={(newMap) => updateState({ userPasswords: newMap })}
                   onUpdateState={updateState}
                   onAddNotification={addNotification}
                   onSwitchUser={handleUserLogin}
