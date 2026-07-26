@@ -28,6 +28,7 @@ import StudentPanel from './components/StudentPanel';
 import ManagerPanel from './components/ManagerPanel';
 import ExamPanel from './components/ExamPanel';
 import LoginModal from './components/LoginModal';
+import PdfExportModal from './components/PdfExportModal';
 
 // Icons
 import {
@@ -51,7 +52,9 @@ import {
   ChevronDown,
   LogIn,
   Globe,
-  Radio
+  Radio,
+  Download,
+  Sparkles
 } from 'lucide-react';
 
 // Initialize Firebase client
@@ -262,6 +265,10 @@ export default function App() {
     addNotification('कलर थीम बदली', `प्राइमरी रंग बदलकर ${color} किया गया।`, 'success');
   };
 
+  // PDF Export Modal State
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfTitle, setPdfTitle] = useState('विद्यालय दस्तावेज व रिपोर्ट');
+
   // 8. Google OAuth sign-in flow
   const handleGoogleLogin = async () => {
     setIsLoggingIn(true);
@@ -270,15 +277,24 @@ export default function App() {
       const credential = GoogleAuthProvider.credentialFromResult(result);
       if (credential?.accessToken) {
         setAccessToken(credential.accessToken);
-        addNotification(
-          'गूगल कनेक्टेड 🟢',
-          `स्वागत है, ${result.user.displayName}! गूगल शीट्स और ड्राइव सिंक अब सक्रिय है।`,
-          'success'
-        );
+      }
+      if (result.user) {
+        const googleUser: UserAccount = {
+          id: `U-G-${result.user.uid}`,
+          name: result.user.displayName || 'गूगल उपयोगकर्ता',
+          email: result.user.email || 'user@google.com',
+          role: 'Admin',
+          isActive: true
+        };
+        handleUserLogin(googleUser);
       }
     } catch (err: any) {
-      console.error('Google Sign-in failed:', err);
-      addNotification('साइन-इन विफल', 'गूगल ऑथेंटिकेशन प्रक्रिया में त्रुटि आई। पुनः प्रयास करें।', 'alert');
+      console.error('Google Sign-in popup closed or restricted:', err);
+      addNotification(
+        'गूगल ऑथेंटिकेशन सूचना',
+        'गूगल पॉपअप बंद हुआ या ब्राउज़र सुरक्षा द्वारा सीमित था। आप सीधे ईमेल/पासवर्ड द्वारा लॉग इन कर सकते हैं।',
+        'warning'
+      );
     } finally {
       setIsLoggingIn(false);
     }
@@ -615,6 +631,19 @@ export default function App() {
           {/* Top Bar Actions */}
           <div className="flex items-center gap-3">
             
+            {/* Quick PDF Export Trigger */}
+            <button
+              onClick={() => {
+                setPdfTitle(`${currentModule === 'dashboard' ? 'विद्यालय समग्र एनालिटिक्स' : activeRole + ' पोर्टल रिपोर्ट'}`);
+                setShowPdfModal(true);
+              }}
+              className="px-2.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-all"
+              title="PDF रिपोर्ट एक्सपोर्ट करें"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">PDF रिपोर्ट</span>
+            </button>
+
             {/* Theme Toggle */}
             <button
               onClick={handleToggleTheme}
@@ -716,7 +745,7 @@ export default function App() {
         )}
 
         {/* 🧭 Main Body viewport area */}
-        <main className="flex-1 overflow-y-auto p-6 space-y-6">
+        <main id="erp-main-content" className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6 space-y-6">
           
           {/* 1. View: Dashboard analytics */}
           {currentModule === 'dashboard' && (
@@ -767,6 +796,7 @@ export default function App() {
                   timetable={state.timetable}
                   onUpdateState={updateState}
                   onAddNotification={addNotification}
+                  onSwitchUser={handleUserLogin}
                 />
               )}
 
@@ -818,14 +848,65 @@ export default function App() {
           )}
 
         </main>
+
+        {/* 📱 Mobile Bottom Bar Navigation */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-zinc-200 dark:border-zinc-800 px-4 py-2 flex justify-around items-center z-40">
+          <button
+            onClick={() => setCurrentModule('dashboard')}
+            className={`flex flex-col items-center gap-1 text-[10px] font-bold ${
+              currentModule === 'dashboard' ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-500'
+            }`}
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            <span>एनालिटिक्स</span>
+          </button>
+          <button
+            onClick={() => setCurrentModule('core-erp')}
+            className={`flex flex-col items-center gap-1 text-[10px] font-bold ${
+              currentModule === 'core-erp' ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-500'
+            }`}
+          >
+            <School className="w-5 h-5" />
+            <span>ERP मॉड्यूल</span>
+          </button>
+          <button
+            onClick={() => {
+              setPdfTitle('विद्यालय दस्तावेज');
+              setShowPdfModal(true);
+            }}
+            className="flex flex-col items-center gap-1 text-[10px] font-bold text-purple-600 dark:text-purple-400"
+          >
+            <Download className="w-5 h-5" />
+            <span>PDF डाउनलोड</span>
+          </button>
+          <button
+            onClick={handleUserLogout}
+            className="flex flex-col items-center gap-1 text-[10px] font-bold text-zinc-500 hover:text-red-500"
+          >
+            <LogOut className="w-5 h-5" />
+            <span>लॉग आउट</span>
+          </button>
+        </nav>
       </div>
 
-      {/* 🔐 Login Modal */}
-      {(showLoginModal || !loggedInUser) && state && (
+      {/* 📄 PDF Export Customization Modal */}
+      <PdfExportModal
+        isOpen={showPdfModal}
+        onClose={() => setShowPdfModal(false)}
+        title={pdfTitle}
+        elementIdToExport="erp-main-content"
+        defaultFilename={`School_ERP_Report_${new Date().toISOString().slice(0,10)}`}
+      />
+
+      {/* 🔐 Login Modal Popup (For changing credentials while logged in) */}
+      {showLoginModal && state && (
         <LoginModal
           teachers={state.teachers}
           students={state.students}
-          onLogin={handleUserLogin}
+          onLogin={(u) => {
+            handleUserLogin(u);
+            setShowLoginModal(false);
+          }}
           onGoogleLogin={handleGoogleLogin}
           isLoggingInGoogle={isLoggingIn}
         />
