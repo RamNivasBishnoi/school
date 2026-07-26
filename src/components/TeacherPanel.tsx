@@ -134,9 +134,9 @@ export default function TeacherPanel({
 
     onUpdateState({ homework: [newHw, ...homework] });
     onAddNotification(
-      'नया गृहकार्य प्रेषित (Homework Assigned)',
-      `कक्षा ${hwClass} को विषय ${teacher.subject} का नया गृहकार्य दिया गया। अंतिम तिथि: ${hwDueDate}`,
-      'info'
+      'सफलतापूर्वक सहेजा गया (Done) ✔',
+      `कक्षा ${hwClass} हेतु विषय ${teacher.subject} का नया गृहकार्य असाइन कर दिया गया है। अंतिम तिथि: ${hwDueDate}`,
+      'success'
     );
 
     setHwTitle('');

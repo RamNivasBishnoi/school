@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Student, Teacher, BusRoute, TimetableSlot, AppState, UserAccount } from '../types';
+import { Student, Teacher, BusRoute, TimetableSlot, AppState, UserAccount, UserPasswordMap } from '../types';
 import { Plus, Trash, Shield, Users, MapPin, CalendarDays, KeyRound, Check, RefreshCw, Sparkles, UserCheck, GraduationCap, Briefcase, FileCheck2, LogIn } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -7,6 +7,8 @@ interface AdminPanelProps {
   teachers: Teacher[];
   busRoutes: BusRoute[];
   timetable: TimetableSlot[];
+  userPasswords?: UserPasswordMap;
+  onUpdatePasswords?: (newPasswords: UserPasswordMap) => void;
   onUpdateState: (updates: Partial<AppState>) => void;
   onAddNotification: (title: string, body: string, type: 'info' | 'success' | 'warning' | 'alert') => void;
   onSwitchUser?: (user: UserAccount) => void;
@@ -17,11 +19,53 @@ export default function AdminPanel({
   teachers,
   busRoutes,
   timetable,
+  userPasswords = {},
+  onUpdatePasswords,
   onUpdateState,
   onAddNotification,
   onSwitchUser
 }: AdminPanelProps) {
-  const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'routes' | 'timetable' | 'users' | 'demo'>('students');
+  const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'routes' | 'timetable' | 'users' | 'security' | 'demo'>('students');
+
+  // Password Change Form State
+  const [targetAccount, setTargetAccount] = useState('admin');
+  const [newPass, setNewPass] = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
+
+  const handleChangePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPass.trim()) {
+      onAddNotification('अधूरा विवरण', 'कृपया नया पासवर्ड दर्ज करें।', 'alert');
+      return;
+    }
+    if (newPass.trim() !== confirmPass.trim()) {
+      onAddNotification('पासवर्ड मेल नहीं खाया', 'नया पासवर्ड और पुष्टि पासवर्ड एक समान होना चाहिए।', 'alert');
+      return;
+    }
+
+    const cleanTarget = targetAccount.trim().toLowerCase();
+    const updatedMap = { ...userPasswords, [cleanTarget]: newPass.trim() };
+
+    if (onUpdatePasswords) {
+      onUpdatePasswords(updatedMap);
+    }
+    onUpdateState({ userPasswords: updatedMap });
+
+    try {
+      localStorage.setItem('SCHOOL_ERP_USER_PASSWORDS', JSON.stringify(updatedMap));
+    } catch (e) {
+      // ignore
+    }
+
+    onAddNotification(
+      'सफलतापूर्वक सहेजा गया (Done) ✔',
+      `खाता '${cleanTarget}' का पासवर्ड सफलतापूर्वक बदल दिया गया है! अब नए पासवर्ड से ही लॉगिन होगा।`,
+      'success'
+    );
+
+    setNewPass('');
+    setConfirmPass('');
+  };
 
   // Form States
   const [newStudent, setNewStudent] = useState({ name: '', fatherName: '', className: '6A', rollNo: '', busRouteId: 'None', busStop: 'None' });
@@ -216,6 +260,16 @@ export default function AdminPanel({
           <KeyRound className="w-4 h-4" /> यूजर एक्सेस (Access Control)
         </button>
         <button
+          onClick={() => setActiveTab('security')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200 ${
+            activeTab === 'security'
+              ? 'bg-purple-600 text-white shadow-xs'
+              : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+          }`}
+        >
+          <Shield className="w-4 h-4" /> सुरक्षा एवं पासवर्ड परिवर्तन
+        </button>
+        <button
           onClick={() => setActiveTab('demo')}
           className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200 ${
             activeTab === 'demo'
@@ -369,10 +423,13 @@ export default function AdminPanel({
                         <td className="p-3 text-center">
                           <button
                             onClick={() => {
-                              onUpdateState({ students: students.filter(st => st.id !== s.id) });
-                              onAddNotification('विद्यार्थी हटाया गया', `छात्र ${s.name} का रिकॉर्ड हटा दिया गया।`, 'warning');
+                              if (window.confirm(`क्या आप निश्चित रूप से छात्र ${s.name} (रोल नं. ${s.rollNo}) का रिकॉर्ड हटाना चाहते हैं?`)) {
+                                onUpdateState({ students: students.filter(st => st.id !== s.id) });
+                                onAddNotification('सफलतापूर्वक विलोपित (Done) ✔', `छात्र ${s.name} का रिकॉर्ड हटा दिया गया है।`, 'success');
+                              }
                             }}
                             className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer"
+                            title="छात्र हटाएं"
                           >
                             <Trash className="w-4 h-4" />
                           </button>
@@ -503,10 +560,13 @@ export default function AdminPanel({
                         <td className="p-3 text-center">
                           <button
                             onClick={() => {
-                              onUpdateState({ teachers: teachers.filter(tc => tc.id !== t.id) });
-                              onAddNotification('शिक्षक का विवरण हटाया गया', `शिक्षक ${t.name} का रिकॉर्ड डिलीट किया गया।`, 'warning');
+                              if (window.confirm(`क्या आप निश्चित रूप से शिक्षक ${t.name} का विवरण हटाना चाहते हैं?`)) {
+                                onUpdateState({ teachers: teachers.filter(tc => tc.id !== t.id) });
+                                onAddNotification('सफलतापूर्वक विलोपित (Done) ✔', `शिक्षक ${t.name} का रिकॉर्ड हटा दिया गया है।`, 'success');
+                              }
                             }}
                             className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer"
+                            title="शिक्षक हटाएं"
                           >
                             <Trash className="w-4 h-4" />
                           </button>
@@ -616,10 +676,13 @@ export default function AdminPanel({
                       </div>
                       <button
                         onClick={() => {
-                          onUpdateState({ busRoutes: busRoutes.filter(br => br.id !== route.id) });
-                          onAddNotification('परिवहन रूट विलोपित', `रूट ${route.routeName} हटा दिया गया।`, 'warning');
+                          if (window.confirm(`क्या आप निश्चित रूप से बस मार्ग ${route.routeName} हटाना चाहते हैं?`)) {
+                            onUpdateState({ busRoutes: busRoutes.filter(br => br.id !== route.id) });
+                            onAddNotification('सफलतापूर्वक विलोपित (Done) ✔', `बस मार्ग ${route.routeName} हटा दिया गया है।`, 'success');
+                          }
                         }}
                         className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer"
+                        title="मार्ग हटाएं"
                       >
                         <Trash className="w-4 h-4" />
                       </button>
@@ -902,6 +965,102 @@ export default function AdminPanel({
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'security' && (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-br from-indigo-900 via-purple-900 to-zinc-900 text-white p-6 rounded-3xl shadow-lg border border-purple-800/40">
+              <div className="flex items-center gap-3 mb-2">
+                <Shield className="w-7 h-7 text-emerald-400" />
+                <div>
+                  <h3 className="text-lg font-black font-display">सुरक्षा व पासवर्ड प्रबंधन (Password Management)</h3>
+                  <p className="text-xs text-purple-200 mt-0.5">
+                    यहाँ से आप Admin, Teacher, Student या अन्य यूजर्स का लॉगिन पासवर्ड बदल सकते हैं। बदलने के बाद नए पासवर्ड से ही लॉगिन होगा।
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="max-w-xl bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xl space-y-4">
+              <h4 className="text-sm font-black text-zinc-900 dark:text-white pb-2 border-b border-zinc-100 dark:border-zinc-800">
+                पासवर्ड अपडेट करें (Update Password)
+              </h4>
+
+              <form onSubmit={handleChangePasswordSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-black text-zinc-700 dark:text-zinc-300 mb-1">
+                    लक्ष्य यूजर / रोल चुनें (Target User) *
+                  </label>
+                  <select
+                    value={targetAccount}
+                    onChange={(e) => setTargetAccount(e.target.value)}
+                    className="w-full text-xs font-bold border border-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 p-3 rounded-xl dark:text-white"
+                  >
+                    <option value="admin">👑 Admin (प्रधानाचार्य) - admin</option>
+                    <option value="suresh">👩‍🏫 Teacher (सुरेश कुमार) - suresh</option>
+                    <option value="teacher">👩‍🏫 Teacher Default - teacher</option>
+                    <option value="01">🎓 Student (रोल नं 01) - 01</option>
+                    <option value="1001">🎓 Student (रोल नं 1001) - 1001</option>
+                    <option value="student">🎓 Student Default - student</option>
+                    <option value="manager">💼 Manager (कोषाध्यक्ष) - manager</option>
+                    <option value="exam">📝 Exam In-charge - exam</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-zinc-700 dark:text-zinc-300 mb-1">
+                    नया पासवर्ड (New Password) *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={newPass}
+                    onChange={(e) => setNewPass(e.target.value)}
+                    placeholder="नया मजबूत पासवर्ड दर्ज करें"
+                    className="w-full text-xs font-bold border border-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 p-3 rounded-xl dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-zinc-700 dark:text-zinc-300 mb-1">
+                    नए पासवर्ड की पुष्टि करें (Confirm New Password) *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={confirmPass}
+                    onChange={(e) => setConfirmPass(e.target.value)}
+                    placeholder="नया पासवर्ड दोबारा दर्ज करें"
+                    className="w-full text-xs font-bold border border-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 p-3 rounded-xl dark:text-white"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all"
+                >
+                  <Check className="w-4 h-4" /> नया पासवर्ड सहेजें (Save New Password)
+                </button>
+              </form>
+            </div>
+
+            {/* GitHub Pages & Custom Firebase Domain Setup Guide */}
+            <div className="max-w-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-5 rounded-3xl space-y-3">
+              <h4 className="text-xs font-black text-amber-900 dark:text-amber-300 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-600" />
+                GitHub Pages पर Google / Firebase सेटअप की जानकारी
+              </h4>
+              <p className="text-[11px] text-amber-800 dark:text-amber-200 leading-relaxed font-medium">
+                <strong>1. Authorized Domains समस्या क्यों आती है?</strong><br />
+                AI Studio का डिफ़ॉल्ट Firebase प्रोजेक्ट सिस्टम द्वारा मैनेज किया जाता है, इसलिए उसमें आपके GitHub डोमेन (<code className="bg-amber-100 dark:bg-amber-900/50 px-1 py-0.5 rounded">username.github.io</code>) को जोडने की सीधी अनुमति नहीं होती और 'Ask admin permission' दिखाता है।
+              </p>
+              <p className="text-[11px] text-amber-800 dark:text-amber-200 leading-relaxed font-medium">
+                <strong>2. समाधान:</strong><br />
+                • <strong>बिना Google लॉगिन के:</strong> GitHub Pages पर आप भूमिका (Admin/Teacher/Student), रोल नंबर/यूजरनेम और पासवर्ड द्वारा 100% बिना किसी एरर के लॉगिन व डेटा सेव कर सकते हैं।<br />
+                • <strong>गूगल लॉगिन के लिए:</strong> यदि आप GitHub Pages पर भी Google Auth चाहते हैं, तो <a href="https://console.firebase.google.com" target="_blank" rel="noreferrer" className="underline font-bold text-amber-900 dark:text-amber-100">firebase.google.com</a> पर अपना फ्री प्रोजेक्ट बनाकर अपने <code className="bg-amber-100 dark:bg-amber-900/50 px-1 py-0.5 rounded">username.github.io</code> को <i>Authentication &gt; Settings &gt; Authorized Domains</i> में जोड़ सकते हैं।
+              </p>
             </div>
           </div>
         )}

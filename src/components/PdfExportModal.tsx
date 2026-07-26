@@ -11,6 +11,57 @@ interface PdfExportModalProps {
   defaultFilename?: string;
 }
 
+// Helper to convert OKLCH color strings to standard RGB/RGBA for html2canvas compatibility
+function oklchToRgbString(oklchStr: string): string {
+  try {
+    const match = oklchStr.match(/oklch\(\s*([\d.%]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.%]+))?\s*\)/i);
+    if (!match) return 'rgb(100, 100, 100)';
+
+    let l = parseFloat(match[1]);
+    if (match[1].endsWith('%')) l /= 100;
+
+    const c = parseFloat(match[2]);
+    const h = parseFloat(match[3]);
+
+    let a = 1;
+    if (match[4]) {
+      a = parseFloat(match[4]);
+      if (match[4].endsWith('%')) a /= 100;
+    }
+
+    const hRad = (h * Math.PI) / 180;
+    const aLab = c * Math.cos(hRad);
+    const bLab = c * Math.sin(hRad);
+
+    const l_ = l + 0.3963377774 * aLab + 0.2158037573 * bLab;
+    const m_ = l - 0.1055613458 * aLab - 0.0638541728 * bLab;
+    const s_ = l - 0.0894841775 * aLab - 1.2914855480 * bLab;
+
+    const l3 = l_ * l_ * l_;
+    const m3 = m_ * m_ * m_;
+    const s3 = s_ * s_ * s_;
+
+    const rLin = +4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3;
+    const gLin = -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3;
+    const bLin = -0.0041960863 * l3 - 0.7034186147 * m3 + 1.7076147010 * s3;
+
+    const toSrgb = (val: number) => {
+      val = Math.max(0, Math.min(1, val));
+      return val <= 0.0031308
+        ? Math.round(val * 12.92 * 255)
+        : Math.round((1.055 * Math.pow(val, 1 / 2.4) - 0.055) * 255);
+    };
+
+    const r = toSrgb(rLin);
+    const g = toSrgb(gLin);
+    const b = toSrgb(bLin);
+
+    return a < 1 ? `rgba(${r}, ${g}, ${b}, ${a})` : `rgb(${r}, ${g}, ${b})`;
+  } catch (e) {
+    return 'rgb(120, 120, 120)';
+  }
+}
+
 export default function PdfExportModal({
   isOpen,
   onClose,
@@ -36,12 +87,42 @@ export default function PdfExportModal({
 
     setIsGenerating(true);
     try {
-      // Render HTML to canvas
+      // Render HTML to canvas with OKLCH color fallback
       const canvas = await html2canvas(targetElement, {
         scale: quality,
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        onclone: (clonedDoc) => {
+          // Replace oklch in all <style> tags
+          const styleTags = clonedDoc.querySelectorAll('style');
+          styleTags.forEach((style) => {
+            if (style.textContent && style.textContent.includes('oklch')) {
+              style.textContent = style.textContent.replace(/oklch\([^)]+\)/gi, (m) => oklchToRgbString(m));
+            }
+          });
+
+          // Replace oklch in inline styles and computed properties
+          const allEls = clonedDoc.querySelectorAll('*');
+          allEls.forEach((el) => {
+            const htmlEl = el as HTMLElement;
+            if (htmlEl.style && htmlEl.style.cssText && htmlEl.style.cssText.includes('oklch')) {
+              htmlEl.style.cssText = htmlEl.style.cssText.replace(/oklch\([^)]+\)/gi, (m) => oklchToRgbString(m));
+            }
+            try {
+              const comp = window.getComputedStyle(htmlEl);
+              ['color', 'backgroundColor', 'borderColor', 'outlineColor', 'fill', 'stroke'].forEach((prop) => {
+                const val = comp.getPropertyValue(prop);
+                if (val && val.includes('oklch')) {
+                  const converted = val.replace(/oklch\([^)]+\)/gi, (m) => oklchToRgbString(m));
+                  htmlEl.style.setProperty(prop, converted, 'important');
+                }
+              });
+            } catch (e) {
+              // ignore computed style evaluation errors
+            }
+          });
+        }
       });
 
       const imgData = canvas.toDataURL('image/png');
@@ -103,12 +184,25 @@ export default function PdfExportModal({
 
   const handlePrintDocument = () => {
     const targetElement = document.getElementById(elementIdToExport);
-    if (!targetElement) return;
+    if (!targetElement) {
+      alert('प्रिंट करने के लिए दस्तावेज़ तत्व नहीं मिला।');
+      return;
+    }
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      alert('पॉप-अप ब्लॉक है। कृपया ब्राउज़र में पॉप-अप अनुमति दें।');
+      // Fallback if popup blocked: print directly
+      window.print();
       return;
+    }
+
+    // Collect all existing page styles so styling is preserved on GitHub Pages
+    let stylesHtml = '';
+    try {
+      const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'));
+      stylesHtml = styles.map(s => s.outerHTML).join('\n');
+    } catch (e) {
+      // ignore
     }
 
     printWindow.document.write(`
@@ -116,16 +210,24 @@ export default function PdfExportModal({
       <html>
         <head>
           <title>${title}</title>
+          ${stylesHtml}
           <style>
-            body { font-family: system-ui, -apple-system, sans-serif; padding: ${margin}mm; }
+            body { font-family: system-ui, -apple-system, sans-serif; padding: ${margin}mm; background: #ffffff !important; color: #000000 !important; }
             @page { size: ${pageSize} ${orientation}; margin: ${margin}mm; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           </style>
-          <link rel="stylesheet" href="${window.location.origin}/src/index.css" />
         </head>
         <body>
-          ${targetElement.innerHTML}
+          <div className="pdf-print-wrapper">
+            ${targetElement.innerHTML}
+          </div>
           <script>
-            setTimeout(() => { window.print(); window.close(); }, 500);
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+                window.close();
+              }, 400);
+            };
           </script>
         </body>
       </html>

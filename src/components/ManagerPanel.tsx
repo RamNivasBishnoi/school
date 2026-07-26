@@ -54,7 +54,7 @@ export default function ManagerPanel({
 
     onUpdateState({ transactions: [newTx, ...transactions] });
     onAddNotification(
-      'लेखा जोखा प्रविष्टि सहेजी गई',
+      'सफलतापूर्वक सहेजा गया (Done) ✔',
       `राशि ₹${Number(txAmount).toLocaleString('hi-IN')} की ${txType === 'Income' ? 'आय' : 'व्यय'} प्रविष्टि दर्ज की गई।`,
       'success'
     );
@@ -76,6 +76,10 @@ export default function ManagerPanel({
     const dues = targetStudent.feeTotal - targetStudent.feePaid;
     if (amount > dues) {
       alert(`भुगतान की राशि लंबित शुल्क ₹${dues} से अधिक नहीं हो सकती।`);
+      return;
+    }
+
+    if (!window.confirm(`क्या आप निश्चित रूप से छात्र ${targetStudent.name} से ₹${amount.toLocaleString('hi-IN')} की फीस रसीद स्वीकार करना चाहते हैं?`)) {
       return;
     }
 
@@ -106,7 +110,7 @@ export default function ManagerPanel({
     });
 
     onAddNotification(
-      'फीस भुगतान रसीद स्वीकृत',
+      'शुल्क रसीद स्वीकृत (Done) ✔',
       `छात्र ${targetStudent.name} से शुल्क राशि ₹${amount.toLocaleString('hi-IN')} सफलता पूर्वक प्राप्त कर ली गई है।`,
       'success'
     );
@@ -119,6 +123,10 @@ export default function ManagerPanel({
   const handlePaySalary = (teacherId: string) => {
     const teach = teachers.find(t => t.id === teacherId);
     if (!teach) return;
+
+    if (!window.confirm(`क्या आप निश्चित रूप से शिक्षक ${teach.name} को वेतन ₹${teach.salary.toLocaleString('hi-IN')} का भुगतान करना चाहते हैं?`)) {
+      return;
+    }
 
     // Update teacher's salary status to Paid
     const updatedTeachers = teachers.map(t => {
@@ -150,7 +158,7 @@ export default function ManagerPanel({
     });
 
     onAddNotification(
-      'वेतन भुगतान पूर्ण (Salary Dispatched)',
+      'वेतन भुगतान पूर्ण (Done) ✔',
       `शिक्षक ${teach.name} को जुलाई २०२६ का वेतन ₹${teach.salary.toLocaleString('hi-IN')} हस्तांतरित किया गया।`,
       'success'
     );
